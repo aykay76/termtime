@@ -185,10 +185,12 @@ func main() {
 				r := scanner.Bytes()
 				switch r[0] {
 				case 0x1b:
+					fmt.Print("ESC ")
 					scanner.Scan()
 					r2 := scanner.Bytes()
 					switch r2[0] {
-					case 0x31:
+					case 0x31: // 1
+						fmt.Print("1 ")
 						scanner.Scan()
 						r3 := scanner.Bytes()
 						switch r3[0] {
@@ -213,11 +215,13 @@ func main() {
 						default:
 							fmt.Printf("%x", r3[0])
 						}
-					case 0x5b:
+					case 0x5b: // [
+						fmt.Print("[ ")
 						scanner.Scan()
-						r3 := scanner.Bytes()
-						switch r3[0] {
-						case 0x31:
+						r3 := scanner.Bytes()[0]
+						switch r3 {
+						case 0x31: // 1
+							fmt.Print("1 ")
 							scanner.Scan()
 							r4 := scanner.Bytes()
 							switch r4[0] {
@@ -225,7 +229,7 @@ func main() {
 								scanner.Scan()
 								r5 := scanner.Bytes()
 								switch r5[0] {
-								case 0x7e:
+								case 0x7e: // ~
 									fmt.Print("F5")
 								default:
 									fmt.Printf("35 %x", r5[0])
@@ -234,7 +238,7 @@ func main() {
 								scanner.Scan()
 								r5 := scanner.Bytes()
 								switch r5[0] {
-								case 0x7e:
+								case 0x7e: // ~
 									fmt.Print("F6")
 								default:
 									fmt.Printf("37 %x", r5[0])
@@ -255,10 +259,20 @@ func main() {
 								case 0x7e:
 									fmt.Print("F8")
 								}
+							case 0x3b: // ;
+								fmt.Print("; ")
+								scanner.Scan()
+								r5 := scanner.Bytes()
+								fmt.Printf("%x ", r5[0])
+
+								scanner.Scan()
+								r6 := scanner.Bytes()
+								fmt.Printf("%x ", r6[0])
 							default:
-								fmt.Printf("31 %x", r4[0])
+								fmt.Printf("31 %x ", r4[0])
 							}
-						case 0x32:
+						case 0x32: // 2
+							fmt.Print("2")
 							scanner.Scan()
 							r4 := scanner.Bytes()
 							switch r4[0] {
@@ -299,13 +313,13 @@ func main() {
 							default:
 								fmt.Printf("32 %x", r4[0])
 							}
-						case 0x41:
+						case 0x41: // A
 							fmt.Print("up")
-						case 0x42:
+						case 0x42: // B
 							fmt.Print("down")
-						case 0x43:
+						case 0x43: // C
 							fmt.Print("right")
-						case 0x44:
+						case 0x44: // D
 							fmt.Print("left")
 						case 0x4d: // M
 							move(1, 1)
@@ -342,7 +356,8 @@ func main() {
 						default:
 							fmt.Printf("5b %x", r3[0])
 						}
-					case 0x4f:
+					case 0x4f: // O
+						fmt.Print("O ")
 						scanner.Scan()
 						r3 := scanner.Bytes()
 						switch r3[0] {
@@ -366,6 +381,8 @@ func main() {
 					}
 				case 'q':
 					c <- os.Interrupt
+				case 'c':
+					fmt.Print("\033[6n")
 				}
 			}
 		}
