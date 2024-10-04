@@ -155,9 +155,11 @@ func main() {
 		term.Restore(int(os.Stdin.Fd()), oldState)
 		showCursor()
 		echoOn()
+		rmcup()
 		os.Exit(1)
 	}()
 
+	smcup()
 	clear()
 	hideCursor()
 	echoOff()
