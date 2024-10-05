@@ -3,12 +3,22 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"time"
 
 	"golang.org/x/term"
 )
 
+// WindowMessage is a message that can be sent from the window manager to a listening channel
+type WindowMessage struct {
+	Window      *Window
+	Action      string
+	Key         string
+	MouseAction string
+	X           int
+	Y           int
+}
+
+// Window represents a window in the application
 type Window struct {
 	X, Y, Width, Height int
 	Content             []string
@@ -59,20 +69,6 @@ func NewWindowManager() *WindowManager {
 	// and it will be rendered on top of the root window
 	screen := NewWindow(1, 1, screenWidth-1, screenHeight-1, false, []string{"▒"})
 	wm.Windows = append(wm.Windows, screen)
-
-	// handle interrupt signal
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		wm.Close()
-		os.Exit(1)
-	}()
-
-	// handle keyboard and mouse input
-	go func() {
-		input(c)
-	}()
 
 	// setup the terminal
 	wm.oldState, err = term.MakeRaw(int(os.Stdin.Fd()))
@@ -203,8 +199,17 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 	move(1, 1)
 }
 
-func (wm *WindowManager) Start() {
+func (wm *WindowManager) Start(c chan WindowMessage) {
 	wm.Render()
+
+	// handle keyboard and mouse input
+	go func() {
+		for {
+			message := input()
+			printCenterf(2, "message: %#v", message)
+			c <- message
+		}
+	}()
 
 	// loop forever checking for keyboard and mouse input
 	for {

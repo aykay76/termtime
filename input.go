@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func input(c chan os.Signal) {
+func input() WindowMessage {
 	for {
 		c0 := 0
 		esc := 1
@@ -42,13 +42,8 @@ func input(c chan os.Signal) {
 					fmt.Print("ESC ")
 					state = esc
 					parms = make([]int, 0)
-				case 'q':
-					c <- os.Interrupt
-				case 'c':
-					fmt.Print("\033[6n")
 				default:
-					move(1, 1)
-					fmt.Printf("?? %x ", r)
+					return WindowMessage{Action: "KeyPress", Key: string(r)}
 				}
 			case esc:
 				if r == '[' {
@@ -58,6 +53,7 @@ func input(c chan os.Signal) {
 					fmt.Print("SS3 ")
 					state = ss3
 				} else {
+					move(1, 1)
 					fmt.Print("Final byte: ", r)
 				}
 			case ss3:
@@ -67,13 +63,13 @@ func input(c chan os.Signal) {
 				case 0x46:
 					fmt.Print("end")
 				case 0x50:
-					fmt.Print("F1")
+					return WindowMessage{Action: "KeyPress", Key: "F1"}
 				case 0x51:
-					fmt.Print("F2")
+					return WindowMessage{Action: "KeyPress", Key: "F2"}
 				case 0x52:
-					fmt.Print("F3")
+					return WindowMessage{Action: "KeyPress", Key: "F3"}
 				case 0x53:
-					fmt.Print("F4")
+					return WindowMessage{Action: "KeyPress", Key: "F4"}
 				}
 				state = c0
 			case csi:
@@ -99,60 +95,60 @@ func input(c chan os.Signal) {
 						state = c0
 						switch r {
 						case 0x41: // A
-							fmt.Print("up")
+							return WindowMessage{Action: "KeyPress", Key: "up"}
 						case 0x42: // B
-							fmt.Print("down")
+							return WindowMessage{Action: "KeyPress", Key: "down"}
 						case 0x43: // C
-							fmt.Print("right")
+							return WindowMessage{Action: "KeyPress", Key: "right"}
 						case 0x44: // D
-							fmt.Print("left")
+							return WindowMessage{Action: "KeyPress", Key: "left"}
 						case 0x46: // F
-							fmt.Print("end")
+							return WindowMessage{Action: "KeyPress", Key: "end"}
 						case 0x48: // H
-							fmt.Print("home")
+							return WindowMessage{Action: "KeyPress", Key: "home"}
 						case 0x4a: // J
-							fmt.Print("clear")
+							return WindowMessage{Action: "ClearScreen"}
 						case 0x4b: // K
-							fmt.Print("clear line")
+							return WindowMessage{Action: "ClearLine"}
 						case 0x7e: // ~
 							fmt.Print("special char ")
 							switch parms[0] {
 							case 1:
-								fmt.Print("home")
+								return WindowMessage{Action: "KeyPress", Key: "home"}
 							case 3:
-								fmt.Print("del")
+								return WindowMessage{Action: "KeyPress", Key: "delete"}
 							case 4:
-								fmt.Print("end")
+								return WindowMessage{Action: "KeyPress", Key: "end"}
 							case 5:
-								fmt.Print("page up")
+								return WindowMessage{Action: "KeyPress", Key: "page up"}
 							case 6:
-								fmt.Print("page down")
+								return WindowMessage{Action: "KeyPress", Key: "page down"}
 							case 11:
-								fmt.Print("F1")
+								return WindowMessage{Action: "KeyPress", Key: "F1"}
 							case 12:
-								fmt.Print("F2")
+								return WindowMessage{Action: "KeyPress", Key: "F2"}
 							case 13:
-								fmt.Print("F3")
+								return WindowMessage{Action: "KeyPress", Key: "F3"}
 							case 14:
-								fmt.Print("F4")
+								return WindowMessage{Action: "KeyPress", Key: "F4"}
 							case 15:
-								fmt.Print("F5")
+								return WindowMessage{Action: "KeyPress", Key: "F5"}
 							case 17:
-								fmt.Print("F6")
+								return WindowMessage{Action: "KeyPress", Key: "F6"}
 							case 18:
-								fmt.Print("F7")
+								return WindowMessage{Action: "KeyPress", Key: "F7"}
 							case 19:
-								fmt.Print("F8")
+								return WindowMessage{Action: "KeyPress", Key: "F8"}
 							case 20:
-								fmt.Print("F9")
+								return WindowMessage{Action: "KeyPress", Key: "F9"}
 							case 21:
-								fmt.Print("F10")
+								return WindowMessage{Action: "KeyPress", Key: "F10"}
 							case 23:
-								fmt.Print("F11")
+								return WindowMessage{Action: "KeyPress", Key: "F11"}
 							case 24:
-								fmt.Print("F12")
+								return WindowMessage{Action: "KeyPress", Key: "F12"}
 							default:
-								fmt.Print("special char ", parms)
+								return WindowMessage{Action: "KeyPress", Key: fmt.Sprintf("special char %d", parms[0])}
 							}
 						default:
 							fmt.Printf("Final byte: %c", r)
@@ -161,35 +157,34 @@ func input(c chan os.Signal) {
 					}
 				}
 			case mouse:
+				scanner.Scan()
+				x := scanner.Bytes()[0] - 32
+
+				scanner.Scan()
+				y := scanner.Bytes()[0] - 32
+
 				switch r {
 				case 0x20:
-					fmt.Printf("left,")
+					return WindowMessage{Action: "MouseLeftButtonDown", X: int(x), Y: int(y)}
 				case 0x21:
-					fmt.Printf("middle,")
+					return WindowMessage{Action: "MouseMiddleButtonDown", X: int(x), Y: int(y)}
 				case 0x22:
-					fmt.Printf("right,")
+					return WindowMessage{Action: "MouseRightButtonDown", X: int(x), Y: int(y)}
 				case 0x23:
-					fmt.Printf("up,")
+					return WindowMessage{Action: "MouseRelease", X: int(x), Y: int(y)}
 				case 0x43:
-					fmt.Printf("drag,")
+					return WindowMessage{Action: "MouseDrag", X: int(x), Y: int(y)}
 				case 0x60:
-					fmt.Printf("scroll up,")
+					return WindowMessage{Action: "MouseScrollUp", X: int(x), Y: int(y)}
 				case 0x61:
-					fmt.Printf("scroll down,")
+					return WindowMessage{Action: "MouseScrollDown", X: int(x), Y: int(y)}
 				case 0x62:
-					fmt.Printf("scroll left,")
+					return WindowMessage{Action: "MouseScrollLeft", X: int(x), Y: int(y)}
 				case 0x63:
-					fmt.Printf("scroll right,")
+					return WindowMessage{Action: "MouseScrollRight", X: int(x), Y: int(y)}
 				default:
 					fmt.Printf("%x", r)
 				}
-				scanner.Scan()
-				r5 := scanner.Bytes()
-				fmt.Printf("x=%d,", r5[0]-32)
-
-				scanner.Scan()
-				r6 := scanner.Bytes()
-				fmt.Printf("y=%d", r6[0]-32)
 
 				state = c0
 			}
