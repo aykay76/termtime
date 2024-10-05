@@ -214,10 +214,12 @@ func (wm *WindowManager) Start(c chan WindowMessage) {
 			// find the window that this message occurred on, for mouse events it will be wherever the cursor is
 			// for keyboard events it will be the window that has focus
 			if message.X > 0 && message.Y > 0 {
-				for _, window := range wm.Windows {
+				for i := len(wm.Windows) - 1; i >= 0; i-- {
+					window := wm.Windows[i]
 					if message.X >= window.X && message.X < window.X+window.Width &&
 						message.Y >= window.Y && message.Y < window.Y+window.Height {
 						message.Window = window
+						break
 					}
 				}
 			} else {
