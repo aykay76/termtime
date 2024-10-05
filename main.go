@@ -49,10 +49,10 @@ func main() {
 				// do something with the key press event
 				switch msg.Key {
 				case "w":
-					win3 := NewWindow(20, 20, 20, 10, true, []string{
+					win3 := NewWindow(18, 18, 20, 10, true, []string{
 						"This is the third window",
 						"It has multiple lines",
-						"And is positioned at 20, 20",
+						"And is positioned at 18, 18",
 						"It is 20 characters wide and 10 characters tall",
 						"It is the third window added to the window manager",
 						"It is on top of the stack",

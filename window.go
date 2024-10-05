@@ -10,12 +10,11 @@ import (
 
 // WindowMessage is a message that can be sent from the window manager to a listening channel
 type WindowMessage struct {
-	Window      *Window
-	Action      string
-	Key         string
-	MouseAction string
-	X           int
-	Y           int
+	Window *Window
+	Action string
+	Key    string
+	X      int
+	Y      int
 }
 
 // Window represents a window in the application
@@ -88,6 +87,7 @@ func NewWindowManager() *WindowManager {
 func (wm *WindowManager) AddWindow(win *Window) {
 	// add window to window manager stack
 	wm.Windows = append(wm.Windows, win)
+	wm.Render()
 }
 
 // TODO: only render parts of the window that have changed
