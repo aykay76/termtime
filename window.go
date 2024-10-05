@@ -66,7 +66,7 @@ func NewWindowManager() *WindowManager {
 	// we start with a single window that covers the entire screen
 	// if we want to add a window on top of this, we can add it to the window manager
 	// and it will be rendered on top of the root window
-	screen := NewWindow(1, 1, screenWidth-1, screenHeight-1, false, []string{"▒"})
+	screen := NewWindow(1, 1, screenWidth-1, screenHeight-1, false, []string{""})
 	wm.Windows = append(wm.Windows, screen)
 
 	// setup the terminal

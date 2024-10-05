@@ -59,9 +59,9 @@ func input() WindowMessage {
 			case ss3:
 				switch r {
 				case 0x48:
-					fmt.Print("home")
+					return WindowMessage{Action: "KeyPress", Key: "home"}
 				case 0x46:
-					fmt.Print("end")
+					return WindowMessage{Action: "KeyPress", Key: "end"}
 				case 0x50:
 					return WindowMessage{Action: "KeyPress", Key: "F1"}
 				case 0x51:
@@ -80,16 +80,10 @@ func input() WindowMessage {
 						scanner.Scan()
 						r = scanner.Bytes()[0]
 					}
-					fmt.Print("Parameter: ", n)
 					parms = append(parms, n)
-
-					if r == ';' {
-						fmt.Print("; ")
-					}
 				}
 				if r >= 0x40 && r <= 0x7e {
 					if r == 0x4d {
-						fmt.Print("mouse ")
 						state = mouse
 					} else {
 						state = c0
@@ -111,7 +105,6 @@ func input() WindowMessage {
 						case 0x4b: // K
 							return WindowMessage{Action: "ClearLine"}
 						case 0x7e: // ~
-							fmt.Print("special char ")
 							switch parms[0] {
 							case 1:
 								return WindowMessage{Action: "KeyPress", Key: "home"}
