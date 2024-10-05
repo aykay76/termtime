@@ -27,7 +27,7 @@ func main() {
 		"It has a border",
 		"It is on top of the stack",
 	})
-	wm.AddWindow(win2)
 	wm.AddWindow(win)
+	wm.AddWindow(win2)
 	wm.Start()
 }

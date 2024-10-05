@@ -12,11 +12,11 @@ func clear() {
 }
 
 func enableMouseTracking() {
-	fmt.Print("\033[?1000h")
+	fmt.Print("\033[?1003h")
 }
 
 func disableMouseTracking() {
-	fmt.Print("\033[?1000l")
+	fmt.Print("\033[?1003l")
 }
 
 func hideCursor() {

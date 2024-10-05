@@ -170,6 +170,8 @@ func input(c chan os.Signal) {
 					fmt.Printf("right,")
 				case 0x23:
 					fmt.Printf("up,")
+				case 0x43:
+					fmt.Printf("drag,")
 				case 0x60:
 					fmt.Printf("scroll up,")
 				case 0x61:

@@ -97,7 +97,7 @@ func (wm *WindowManager) AddWindow(win *Window) {
 // TODO: only render parts of the window that have changed
 // TODO: add support for colors
 
-func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]bool) {
+func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]int) {
 	// Mark the areas covered by children in the mask
 	for _, child := range window.Children {
 		for i := 0; i < child.Height; i++ {
@@ -108,7 +108,7 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 				if child.X+j >= window.Width {
 					break
 				}
-				mask[child.Y+i][child.X+j] = true
+				mask[child.Y+i][child.X+j]++
 			}
 		}
 	}
@@ -117,12 +117,7 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 	// TODO: this is a naive implementation - ignore windows before this window
 	// ignore windows "below" this window and ignore this window itself
 	found := false
-	for idx, win := range wm.Windows {
-		// ignore the first window in the stack
-		if idx == 0 {
-			continue
-		}
-
+	for _, win := range wm.Windows {
 		// ignore this window
 		if win == window {
 			found = true
@@ -145,7 +140,7 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 				}
 				if win.Y+i >= window.Y && win.Y+i < window.Y+window.Height &&
 					win.X+j >= window.X && win.X+j < window.X+window.Width {
-					mask[win.Y+i][win.X+j] = true
+					mask[win.Y+i][win.X+j]++
 				}
 			}
 		}
@@ -178,11 +173,15 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 			move(window.X+j, window.Y+i)
 
 			// also need to clip the window content to the height and width of the window
-			if !mask[i][j] && i < len(window.Content) && j < len(window.Content[i]) {
-				printCenter(1, window.Content[i])
-				// fmt.Printf("%#U", window.Content[i][j])
-				// TODO: do i need to keep a copy of this in memory? I can just print it out
-				screen[window.Y+i][window.X+j] = rune(window.Content[i][j])
+			if mask[i][j] == 0 {
+				if i < len(window.Content) && j < len(window.Content[i]) {
+					printCenter(1, window.Content[i])
+					// fmt.Printf("%#U", window.Content[i][j])
+					// TODO: do i need to keep a copy of this in memory? I can just print it out
+					screen[window.Y+i][window.X+j] = rune(window.Content[i][j])
+				} else {
+					screen[window.Y+i][window.X+j] = ' '
+				}
 			}
 		}
 	}
@@ -196,11 +195,7 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 	for i := range screen {
 		move(1, i)
 		for j := range screen[i] {
-			if mask[i][j] {
-				setBackground(1)
-			} else {
-				setBackground(0)
-			}
+			setBackground(mask[i][j])
 			fmt.Print(string(screen[i][j]))
 		}
 	}
@@ -241,9 +236,9 @@ func (wm *WindowManager) Render() {
 		}
 	}
 
-	mask := make([][]bool, wm.ScreenHeight)
+	mask := make([][]int, wm.ScreenHeight)
 	for i := range mask {
-		mask[i] = make([]bool, wm.ScreenWidth)
+		mask[i] = make([]int, wm.ScreenWidth)
 	}
 
 	// Render the windows
