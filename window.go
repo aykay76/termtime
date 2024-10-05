@@ -45,7 +45,8 @@ type WindowManager struct {
 	ScreenWidth, ScreenHeight int
 
 	// Windows is a slice that holds pointers to Window objects, representing multiple windows in the application.
-	Windows []*Window
+	Windows       []*Window
+	FocusedWindow *Window
 
 	// store old state of terminal
 	oldState *term.State
@@ -87,11 +88,14 @@ func NewWindowManager() *WindowManager {
 func (wm *WindowManager) AddWindow(win *Window) {
 	// add window to window manager stack
 	wm.Windows = append(wm.Windows, win)
+	// set focus on the new window
+	wm.FocusedWindow = win
+	// render the window manager
 	wm.Render()
 }
 
 // TODO: only render parts of the window that have changed
-// TODO: add support for colors
+// TODO: add support for colors in content
 
 func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]int) {
 	// Mark the areas covered by children in the mask
@@ -206,6 +210,21 @@ func (wm *WindowManager) Start(c chan WindowMessage) {
 	go func() {
 		for {
 			message := input()
+
+			// find the window that this message occurred on, for mouse events it will be wherever the cursor is
+			// for keyboard events it will be the window that has focus
+			if message.X > 0 && message.Y > 0 {
+				for _, window := range wm.Windows {
+					if message.X >= window.X && message.X < window.X+window.Width &&
+						message.Y >= window.Y && message.Y < window.Y+window.Height {
+						message.Window = window
+					}
+				}
+			} else {
+				// find the window that has focus
+				message.Window = wm.FocusedWindow
+			}
+
 			printCenterf(2, "message: %#v", message)
 			c <- message
 		}
