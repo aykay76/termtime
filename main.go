@@ -1,184 +1,33 @@
 package main
 
-import (
-	"fmt"
-	"os"
-	"os/signal"
-	"time"
-
-	"golang.org/x/term"
-)
-
-var w, h int
-
-func clear() {
-	fmt.Print("\033[2J")
-}
-
-func enableMouseTracking() {
-	fmt.Print("\033[?1000h")
-}
-
-func disableMouseTracking() {
-	fmt.Print("\033[?1000l")
-}
-
-func hideCursor() {
-	fmt.Print("\033[?25l")
-}
-
-func echoOff() {
-	fmt.Print("\033[?7l")
-}
-
-func smcup() {
-	fmt.Print("\033[?1049h")
-}
-
-func rmcup() {
-	fmt.Print("\033[?1049l")
-}
-
-func echoOn() {
-	fmt.Print("\033[?7h")
-}
-
-func showCursor() {
-	fmt.Print("\033[?25h")
-}
-
-func move(x, y int) {
-	fmt.Printf("\033[%d;%dH", y, x)
-}
-
-func printAt(x, y int, s string) {
-	move(x, y)
-	fmt.Print(s)
-}
-
-func printCenter(y int, s string) {
-	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	x := (width - len(s)) / 2
-	printAt(x, y, s)
-}
-
-func printCenterln(y int, s string) {
-	printCenter(y, s)
-	fmt.Println()
-}
-
-func printCenterlnf(y int, format string, a ...interface{}) {
-	printCenterln(y, fmt.Sprintf(format, a...))
-}
-
-func printCenterf(y int, format string, a ...interface{}) {
-	printCenter(y, fmt.Sprintf(format, a...))
-}
-
-func printCenterBox(y int, s string) {
-	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	x := (width - len(s)) / 2
-	drawBox(x-1, y-1, len(s)+2, 3)
-	printAt(x, y, s)
-}
-
-func printCenterBoxf(y int, format string, a ...interface{}) {
-	printCenterBox(y, fmt.Sprintf(format, a...))
-}
-
-func printCenterBoxln(y int, s string) {
-	printCenterBox(y, s)
-	fmt.Println()
-}
-
-func drawBox(x, y, width, height int) {
-	move(x, y)
-
-	// draw a box
-	fmt.Print("\033(0")
-	fmt.Print("l")
-	for i := 0; i < width-2; i++ {
-		fmt.Print("q")
-	}
-	fmt.Print("k")
-	y++
-	for i := 0; i < height-2; i++ {
-		move(x, y)
-
-		fmt.Print("x")
-		fmt.Printf("\033[%dC", width-2)
-		fmt.Print("x")
-		y++
-	}
-
-	move(x, y)
-	fmt.Print("m")
-	for i := 0; i < width-2; i++ {
-		fmt.Print("q")
-	}
-	fmt.Print("j")
-	fmt.Print("\033(B")
-}
-
-func frame() {
-	width, height, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	if width != w || height != h {
-		w = width
-		h = height
-		redraw()
-	}
-}
-
-func redraw() {
-	clear()
-	drawBox(5, 5, w-10, h-10)
-	printCenter(5, " Hello, World! ")
-}
+var wm *WindowManager
 
 func main() {
-	// raw mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		fmt.Println(err)
-	}
 
-	// TODO: move this to a utility function that will be consumed via package
-	// handle interrupt signal
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		term.Restore(int(os.Stdin.Fd()), oldState)
-		showCursor()
-		echoOn()
-		disableMouseTracking()
-		rmcup()
-		os.Exit(1)
-	}()
-
-	// TODO: move this to utility function that will be consumed via package
-	smcup()
-	clear()
-	hideCursor()
-	echoOff()
-	enableMouseTracking()
-
-	// get the terminal size
-	w, h, _ = term.GetSize(int(os.Stdout.Fd()))
-
-	redraw()
-
-	go func() {
-		input(c)
-	}()
-
-	// loop forever checking for keyboard and mouse input
-	for {
-		time.Sleep(10 * time.Millisecond)
-		frame()
-	}
+	// create a window manager and add some example windows
+	wm = NewWindowManager()
+	win := NewWindow(10, 10, 20, 10, true, []string{
+		"This is the first window",
+		"It has multiple lines",
+		"And is positioned at 10, 10",
+		"It is 20 characters wide and 10 characters tall",
+		"It is the first window added to the window manager",
+		"Press 'q' to quit",
+		"Press 'w' to add a new window",
+		"Press 'e' to remove the last window",
+		"Press 'r' to remove all windows",
+		"Press 't' to toggle window visibility",
+		"Press 'y' to toggle window focus",
+	})
+	win2 := NewWindow(15, 15, 20, 10, true, []string{
+		"This window should sit on top of the first window",
+		"It is positioned at 15, 15",
+		"It is 20 characters wide and 10 characters tall",
+		"It is the second window added to the window manager",
+		"It has a border",
+		"It is on top of the stack",
+	})
+	wm.AddWindow(win2)
+	wm.AddWindow(win)
+	wm.Start()
 }

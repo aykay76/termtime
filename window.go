@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"time"
 
 	"golang.org/x/term"
 )
@@ -13,21 +15,31 @@ type Window struct {
 	// add hierarchy for stacked windows
 	Children []*Window
 	Parent   *Window
+	// add a flag to indicate whether the window is clickable, we don't want the root window to be brought to the front
+	Clickable bool
+	// add a flag to indicate whether the border is visible
+	Border bool
 }
 
-func NewWindow(x, y, width, height int, content []string) *Window {
+func NewWindow(x, y, width, height int, border bool, content []string) *Window {
 	return &Window{
 		X:       x,
 		Y:       y,
 		Width:   width,
 		Height:  height,
 		Content: content,
+		Border:  border,
 	}
 }
 
 type WindowManager struct {
 	ScreenWidth, ScreenHeight int
-	RootWindow                *Window
+
+	// Windows is a slice that holds pointers to Window objects, representing multiple windows in the application.
+	Windows []*Window
+
+	// store old state of terminal
+	oldState *term.State
 }
 
 func NewWindowManager() *WindowManager {
@@ -39,34 +51,53 @@ func NewWindowManager() *WindowManager {
 	wm := &WindowManager{
 		ScreenWidth:  screenWidth,
 		ScreenHeight: screenHeight,
-		RootWindow:   NewWindow(0, 0, screenWidth, screenHeight, []string{}),
+		Windows:      []*Window{},
 	}
+
+	// we start with a single window that covers the entire screen
+	// if we want to add a window on top of this, we can add it to the window manager
+	// and it will be rendered on top of the root window
+	screen := NewWindow(1, 1, screenWidth-1, screenHeight-1, false, []string{"▒"})
+	wm.Windows = append(wm.Windows, screen)
+
+	// handle interrupt signal
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		wm.Close()
+		os.Exit(1)
+	}()
+
+	// handle keyboard and mouse input
+	go func() {
+		input(c)
+	}()
+
+	// setup the terminal
+	wm.oldState, err = term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		fmt.Println(err)
+	}
+	smcup()
+	clear()
+	hideCursor()
+	echoOff()
+	enableMouseTracking()
 
 	return wm
 }
 
 // add window to window manager, and add window to root window or parent window
-func (wm *WindowManager) AddWindow(win *Window, parentWindow *Window) {
-	if parentWindow != nil {
-		parentWindow.Children = append(parentWindow.Children, win)
-		win.Parent = parentWindow
-	} else {
-		// add window to root window if no parentWindow is provided
-		wm.RootWindow.Children = append(wm.RootWindow.Children, win)
-		win.Parent = wm.RootWindow
-	}
+func (wm *WindowManager) AddWindow(win *Window) {
+	// add window to window manager stack
+	wm.Windows = append(wm.Windows, win)
 }
 
 // TODO: only render parts of the window that have changed
 // TODO: add support for colors
 
-func (wm *WindowManager) renderWindow(window *Window, screen [][]rune) {
-	// Create a mask to track which parts of the window are obscured by children
-	mask := make([][]bool, window.Height)
-	for i := range mask {
-		mask[i] = make([]bool, window.Width)
-	}
-
+func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]bool) {
 	// Mark the areas covered by children in the mask
 	for _, child := range window.Children {
 		for i := 0; i < child.Height; i++ {
@@ -82,6 +113,44 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune) {
 		}
 	}
 
+	// Mark the areas covered by other windows in the stack but not this window
+	// TODO: this is a naive implementation - ignore windows before this window
+	// ignore windows "below" this window and ignore this window itself
+	found := false
+	for idx, win := range wm.Windows {
+		// ignore the first window in the stack
+		if idx == 0 {
+			continue
+		}
+
+		// ignore this window
+		if win == window {
+			found = true
+			continue
+		}
+
+		// ignore windows "below" this window
+		if !found {
+			continue
+		}
+
+		// mark the areas covered by this window
+		for i := 0; i < win.Height; i++ {
+			if win.Y+i >= wm.ScreenHeight {
+				break
+			}
+			for j := 0; j < win.Width; j++ {
+				if win.X+j >= wm.ScreenWidth {
+					break
+				}
+				if win.Y+i >= window.Y && win.Y+i < window.Y+window.Height &&
+					win.X+j >= window.X && win.X+j < window.X+window.Width {
+					mask[win.Y+i][win.X+j] = true
+				}
+			}
+		}
+	}
+
 	// Render the window content where it's not obscured by children
 	for i := 0; i < window.Height; i++ {
 		if window.Y+i >= wm.ScreenHeight {
@@ -91,7 +160,28 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune) {
 			if window.X+j >= wm.ScreenWidth {
 				break
 			}
+
+			// draw a border around the window
+			if window.Border {
+				if i == 0 || i == window.Height-1 {
+					if j == 0 || j == window.Width-1 {
+						screen[window.Y+i][window.X+j] = '+'
+					} else {
+						screen[window.Y+i][window.X+j] = '-'
+					}
+				} else if j == 0 || j == window.Width-1 {
+					screen[window.Y+i][window.X+j] = '|'
+				}
+			}
+
+			// at this point I need to move the cursor ready to output the content
+			move(window.X+j, window.Y+i)
+
+			// also need to clip the window content to the height and width of the window
 			if !mask[i][j] && i < len(window.Content) && j < len(window.Content[i]) {
+				printCenter(1, window.Content[i])
+				// fmt.Printf("%#U", window.Content[i][j])
+				// TODO: do i need to keep a copy of this in memory? I can just print it out
 				screen[window.Y+i][window.X+j] = rune(window.Content[i][j])
 			}
 		}
@@ -99,7 +189,46 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune) {
 
 	// Render the children windows
 	for _, child := range window.Children {
-		wm.renderWindow(child, screen)
+		wm.renderWindow(child, screen, mask)
+	}
+
+	// render the screen
+	for i := range screen {
+		move(1, i)
+		for j := range screen[i] {
+			if mask[i][j] {
+				setBackground(1)
+			} else {
+				setBackground(0)
+			}
+			fmt.Print(string(screen[i][j]))
+		}
+	}
+
+	move(1, 1)
+}
+
+func (wm *WindowManager) Start() {
+	wm.Render()
+
+	// loop forever checking for keyboard and mouse input
+	for {
+		// redraw the screen if the terminal size has changed
+		time.Sleep(10 * time.Millisecond)
+
+		// get the terminal size
+		width, height, err := term.GetSize(int(os.Stdout.Fd()))
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// if the terminal size has changed, redraw the screen
+		if width != wm.ScreenWidth || height != wm.ScreenHeight {
+			printCenterf(wm.ScreenHeight-1, "width: %d, height: %d\n", width, height)
+			wm.ScreenWidth = width
+			wm.ScreenHeight = height
+			wm.Render()
+		}
 	}
 }
 
@@ -112,5 +241,21 @@ func (wm *WindowManager) Render() {
 		}
 	}
 
-	wm.renderWindow(wm.RootWindow, screen)
+	mask := make([][]bool, wm.ScreenHeight)
+	for i := range mask {
+		mask[i] = make([]bool, wm.ScreenWidth)
+	}
+
+	// Render the windows
+	for _, window := range wm.Windows {
+		wm.renderWindow(window, screen, mask)
+	}
+}
+
+func (wm *WindowManager) Close() {
+	term.Restore(int(os.Stdin.Fd()), wm.oldState)
+	showCursor()
+	echoOn()
+	disableMouseTracking()
+	rmcup()
 }
