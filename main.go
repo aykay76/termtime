@@ -146,6 +146,7 @@ func main() {
 		fmt.Println(err)
 	}
 
+	// TODO: move this to a utility function that will be consumed via package
 	// handle interrupt signal
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -159,6 +160,7 @@ func main() {
 		os.Exit(1)
 	}()
 
+	// TODO: move this to utility function that will be consumed via package
 	smcup()
 	clear()
 	hideCursor()
@@ -170,19 +172,13 @@ func main() {
 
 	redraw()
 
-	// how to save and restore screen for dialog boxes
-	// smcup()
-	// printCenterBox(3, "Welcome to some program!\r\n\r\nThis is some introduction text that will be displayed for 2 seconds. \r\n\r\nPress 'q' to quit at any time")
-	// time.Sleep(2 * time.Second)
-	// rmcup()
-
 	go func() {
 		input(c)
 	}()
 
 	// loop forever checking for keyboard and mouse input
 	for {
-		time.Sleep(40 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		frame()
 	}
 }
