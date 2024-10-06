@@ -94,7 +94,7 @@ func (wm *WindowManager) AddWindow(win *Window) {
 	wm.Render()
 }
 
-// TODO: only render parts of the window that have changed
+// TODO: add mechanism to detect dirty cells and only render those cells
 // TODO: add support for colors in content
 
 func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]int) {
@@ -158,14 +158,24 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 
 			// draw a border around the window
 			if window.Border {
-				if i == 0 || i == window.Height-1 {
-					if j == 0 || j == window.Width-1 {
-						screen[window.Y+i][window.X+j] = '+'
+				if i == 0 {
+					if j == 0 {
+						screen[window.Y+i][window.X+j] = '┌'
+					} else if j == window.Width-1 {
+						screen[window.Y+i][window.X+j] = '┐'
 					} else {
-						screen[window.Y+i][window.X+j] = '-'
+						screen[window.Y+i][window.X+j] = '─'
+					}
+				} else if i == window.Height-1 {
+					if j == 0 {
+						screen[window.Y+i][window.X+j] = '└'
+					} else if j == window.Width-1 {
+						screen[window.Y+i][window.X+j] = '┘'
+					} else {
+						screen[window.Y+i][window.X+j] = '─'
 					}
 				} else if j == 0 || j == window.Width-1 {
-					screen[window.Y+i][window.X+j] = '|'
+					screen[window.Y+i][window.X+j] = '│'
 				}
 			}
 
