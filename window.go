@@ -174,12 +174,20 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 
 			// also need to clip the window content to the height and width of the window
 			if mask[i][j] == 0 {
-				if i < len(window.Content) && j < len(window.Content[i]) {
-					printCenter(1, window.Content[i])
-					// fmt.Printf("%#U", window.Content[i][j])
-					// TODO: do i need to keep a copy of this in memory? I can just print it out
-					screen[window.Y+i][window.X+j] = rune(window.Content[i][j])
+				contentOffset := 0
+				if window.Border {
+					contentOffset = 1
+				}
+				if i-contentOffset >= 0 && i-contentOffset < len(window.Content) && j-contentOffset >= 0 && j-contentOffset < len(window.Content[i-contentOffset]) {
+					if window.Border && (i == 0 || i == window.Height-1 || j == 0 || j == window.Width-1) {
+						continue
+					}
+					printCenter(1, window.Content[i-contentOffset])
+					screen[window.Y+i][window.X+j] = rune(window.Content[i-contentOffset][j-contentOffset])
 				} else {
+					if window.Border && (i == 0 || i == window.Height-1 || j == 0 || j == window.Width-1) {
+						continue
+					}
 					screen[window.Y+i][window.X+j] = ' '
 				}
 			}
@@ -195,7 +203,7 @@ func (wm *WindowManager) renderWindow(window *Window, screen [][]rune, mask [][]
 	for i := range screen {
 		move(1, i)
 		for j := range screen[i] {
-			setBackground(mask[i][j])
+			// setBackground(mask[i][j])
 			fmt.Print(string(screen[i][j]))
 		}
 	}
