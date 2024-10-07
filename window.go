@@ -48,6 +48,8 @@ type WindowManager struct {
 	Windows       []*Window
 	FocusedWindow *Window
 
+	ForceRedraw bool
+
 	// store old state of terminal
 	oldState *term.State
 }
@@ -237,6 +239,15 @@ func (wm *WindowManager) Start(c chan WindowMessage) {
 					if message.X >= window.X && message.X < window.X+window.Width &&
 						message.Y >= window.Y && message.Y < window.Y+window.Height {
 						message.Window = window
+
+						printCenterf(3, "window: %#v", window)
+						if message.Action == "MouseLeftButtonDown" {
+							wm.Windows = append(wm.Windows[:i], wm.Windows[i+1:]...)
+							wm.Windows = append(wm.Windows, message.Window)
+							wm.FocusedWindow = message.Window
+							wm.ForceRedraw = true
+						}
+
 						break
 					}
 				}
@@ -262,11 +273,12 @@ func (wm *WindowManager) Start(c chan WindowMessage) {
 		}
 
 		// if the terminal size has changed, redraw the screen
-		if width != wm.ScreenWidth || height != wm.ScreenHeight {
+		if wm.ForceRedraw || width != wm.ScreenWidth || height != wm.ScreenHeight {
 			printCenterf(wm.ScreenHeight-1, "width: %d, height: %d\n", width, height)
 			wm.ScreenWidth = width
 			wm.ScreenHeight = height
 			wm.Render()
+			wm.ForceRedraw = false
 		}
 	}
 }
