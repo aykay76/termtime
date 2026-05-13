@@ -9,11 +9,11 @@ var wm *WindowManager
 func main() {
 	// create a window manager and add some example windows
 	wm = NewWindowManager()
-	win := NewWindow(10, 10, 20, 10, true, []string{
+	win := NewWindow(10, 10, 40, 10, false, []string{
 		"This is the first window",
 		"It has multiple lines",
 		"And is positioned at 10, 10",
-		"It is 20 characters wide and 10 characters tall",
+		"It is 40 characters wide and 10 characters tall",
 		"It is the first window added to the window manager",
 		"Press 'q' to quit",
 		"Press 'w' to add a new window",
